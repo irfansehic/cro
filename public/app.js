@@ -190,7 +190,7 @@ function App() {
 
   return (
     <div className="container">
-      <h1>e pravosidje API tester</h1>
+      <h1>e pravosudje API tester</h1>
       <div className="sub">
         Dva poziva prema e-Oglasnoj ploči (preko Node proxy-ja) i prikaz rezultata s paginacijom (20 po stranici).
       </div>
@@ -225,8 +225,10 @@ function App() {
       )}
 
       <div style={{ marginTop: 18 }} className="small">
-        Napomena: API ima rate limiting; ako dobiješ 429, pričekaj prema headeru <i>X-Rate-Limit-Retry-After-Milliseconds</i>. :contentReference[oaicite:1]{index=1}
+        Napomena: API ima rate limiting; ako dobiješ 429, pričekaj prema headeru{" "}
+        <i>X-Rate-Limit-Retry-After-Milliseconds</i>.
       </div>
+
     </div>
   );
 }
