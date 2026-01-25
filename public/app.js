@@ -15,44 +15,106 @@ function safeStr(v) {
 }
 
 function ListItem({ item }) {
-  // Both endpoints return Notice-like objects (per API schemas),
-  // so we render common fields defensively.
   const title = safeStr(item.title);
   const publicUrl = item.publicUrl;
-  const docsUrl = item.noticeDocumentsDownloadUrl;
 
+  const docsBundleUrl = item.noticeDocumentsDownloadUrl;
+  const docs = Array.isArray(item.noticeDocuments) ? item.noticeDocuments : [];
   const participants = Array.isArray(item.participants) ? item.participants : [];
+
+  const courtName = item?.court?.name;
+  const courtCode = item?.court?.code;
+  const courtType = item?.court?.courtType;
+
+  const caseNumber = item?.caseNumber;
+  const caseType = item?.caseType;
 
   return (
     <div className="card">
       <div className="row">
         <div style={{ flex: "1 1 700px" }}>
           <div className="title">{title}</div>
+
           <div className="meta">
             <div>
               <span className="badge">{safeStr(item.noticeType)}</span>{" "}
               <span className="badge">{safeStr(item.noticeSourceType)}</span>
+              {caseType ? (
+                <>
+                  {" "}
+                  <span className="badge">{safeStr(caseType)}</span>
+                </>
+              ) : null}
             </div>
+
+            {courtName && (
+              <div>
+                Sud: {safeStr(courtName)}
+                {courtCode ? ` (${courtCode})` : ""}
+                {courtType ? ` · ${courtType}` : ""}
+              </div>
+            )}
+
+            {caseNumber && <div>Predmet: {safeStr(caseNumber)}</div>}
+
             <div>Objavljeno: {fmtDate(item.datePublished)}</div>
-            <div>Istječe: {fmtDate(item.expirationDate)}</div>
+            <div>Istječe: {safeStr(item.expirationDate)}</div>
             <div>UUID: {safeStr(item.uuid)}</div>
-            <div>
+
+            <div style={{ marginTop: 6 }}>
               {publicUrl ? (
                 <>
-                  Oglas: <a href={publicUrl} target="_blank" rel="noreferrer">Otvori</a>
+                  Oglas:{" "}
+                  <a href={publicUrl} target="_blank" rel="noreferrer">
+                    Otvori
+                  </a>
                 </>
               ) : (
                 <>Oglas: —</>
               )}
+
               {" · "}
-              {docsUrl ? (
+
+              {docsBundleUrl ? (
                 <>
-                  Dokumenti: <a href={docsUrl} target="_blank" rel="noreferrer">Preuzmi</a>
+                  Svi dokumenti:{" "}
+                  <a href={docsBundleUrl} target="_blank" rel="noreferrer">
+                    Preuzmi
+                  </a>
                 </>
               ) : (
-                <>Dokumenti: —</>
+                <>Svi dokumenti: —</>
               )}
             </div>
+
+            {docs.length > 0 && (
+              <div style={{ marginTop: 8 }}>
+                <div style={{ fontWeight: 600, color: "#cbd5e1", marginBottom: 4 }}>
+                  Dokumenti
+                </div>
+                {docs
+                  .slice()
+                  .sort((a, b) => (a.ordinal ?? 0) - (b.ordinal ?? 0))
+                  .map((d, idx) => {
+                    const decision = d.vrstaOdlukeNaziv || d.vrstaOdlukeId;
+                    return (
+                      <div key={d.uuid ?? `doc-${idx}`}>
+                        {safeStr(d.fileName)}
+                        {decision ? (
+                          <div className="small">Vrsta odluke: {safeStr(decision)}</div>
+                        ) : null}
+                        {d.downloadUrl ? (
+                          <div className="small">
+                            <a href={d.downloadUrl} target="_blank" rel="noreferrer">
+                              Direktno preuzimanje
+                            </a>
+                          </div>
+                        ) : null}
+                      </div>
+                    );
+                  })}
+              </div>
+            )}
           </div>
         </div>
 
@@ -62,14 +124,21 @@ function ListItem({ item }) {
               <div style={{ marginBottom: 6, fontWeight: 600, color: "#cbd5e1" }}>
                 Sudionici
               </div>
-              {participants.slice(0, 6).map((p, idx) => (
-                <div key={idx}>
-                  {safeStr(p.participantType)}: {safeStr(p.titles)}{" "}
-                  {p.debtor === true ? "(dužnik)" : ""}
-                </div>
-              ))}
-              {participants.length > 6 && (
-                <div className="small">+ još {participants.length - 6}</div>
+
+              {participants.slice(0, 10).map((p, idx) => {
+                const displayName = p.fullName || p.name || p.titles;
+                return (
+                  <div key={`p-${idx}`} style={{ marginBottom: 8 }}>
+                    {safeStr(p.participantType)}: {safeStr(displayName)}{" "}
+                    {p.debtor === true ? "(dužnik)" : ""}
+                    {p.oib ? <div className="small">OIB: {p.oib}</div> : null}
+                    {p.address ? <div className="small">Adresa: {p.address}</div> : null}
+                  </div>
+                );
+              })}
+
+              {participants.length > 10 && (
+                <div className="small">+ još {participants.length - 10}</div>
               )}
             </div>
           </div>
@@ -78,6 +147,8 @@ function ListItem({ item }) {
     </div>
   );
 }
+
+
 
 function PaginatedList({ mode }) {
   // mode: "notice" | "bankruptcy"
@@ -178,9 +249,10 @@ function PaginatedList({ mode }) {
         <div className="small">Nema rezultata za prikaz.</div>
       )}
 
-      {content.map((item) => (
-        <ListItem key={item.uuid || Math.random()} item={item} />
+      {content.map((item, idx) => (
+      <ListItem key={item.uuid ?? `${mode}-${idx}`} item={item} />
       ))}
+
     </div>
   );
 }
