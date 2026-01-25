@@ -185,9 +185,53 @@ function PaginatedList({ mode }) {
   );
 }
 
+function RawPanel({ title, obj }) {
+  if (!obj) return null;
+  return (
+    <div className="card">
+      <div className="title">{title}</div>
+      <pre style={{
+        margin: 0,
+        whiteSpace: "pre-wrap",
+        wordBreak: "break-word",
+        color: "#e5e7eb",
+        fontSize: 12,
+        lineHeight: 1.4
+      }}>
+        {JSON.stringify(obj, null, 2)}
+      </pre>
+    </div>
+  );
+}
+
+
 function App() {
   const [active, setActive] = useState(null); // null | "notice" | "bankruptcy"
 
+  const [rawNotice, setRawNotice] = useState(null);
+  const [rawBankruptcy, setRawBankruptcy] = useState(null);
+  const [rawErr, setRawErr] = useState(null);
+  const [rawLoading, setRawLoading] = useState(false);
+
+  async function loadRaw(which) {
+    setRawLoading(true);
+    setRawErr(null);
+    try {
+      const url = which === "notice" ? "/api/notice/first" : "/api/bankruptcy/first";
+      const r = await fetch(url, { headers: { Accept: "application/json" } });
+      if (!r.ok) throw new Error(`HTTP ${r.status}: ${(await r.text()).slice(0, 250)}`);
+      const json = await r.json();
+      if (which === "notice") setRawNotice(json);
+      else setRawBankruptcy(json);
+    } catch (e) {
+      setRawErr(e.message || String(e));
+    } finally {
+      setRawLoading(false);
+    }
+  }
+  
+
+  
   return (
     <div className="container">
       <h1>e pravosudje API tester</h1>
@@ -196,12 +240,12 @@ function App() {
       </div>
 
       <div className="toolbar">
-        <button onClick={() => setActive("notice")}>
-          Ucitaj oglasne ploce sudova
-        </button>
-        <button onClick={() => setActive("bankruptcy")}>
-          Ucitaj bankrote
-        </button>
+        <button onClick={() => { setActive("notice"); loadRaw("notice"); }}>
+      Ucitaj oglasne ploce sudova
+      </button>
+      <button onClick={() => { setActive("bankruptcy"); loadRaw("bankruptcy"); }}>
+      Ucitaj bankrote
+      </button>
       </div>
 
       {active === null && (
@@ -228,6 +272,13 @@ function App() {
         Napomena: API ima rate limiting; ako dobiješ 429, pričekaj prema headeru{" "}
         <i>X-Rate-Limit-Retry-After-Milliseconds</i>.
       </div>
+
+      {rawErr && <div className="error">{rawErr}</div>}
+{rawLoading && <div className="small">Učitavanje raw JSON…</div>}
+
+{active === "notice" && <RawPanel title="RAW (prvi element) - notice" obj={rawNotice} />}
+{active === "bankruptcy" && <RawPanel title="RAW (prvi element) - bankruptcy" obj={rawBankruptcy} />}
+
 
     </div>
   );
