@@ -359,7 +359,8 @@ function PaginatedList({ mode, initialText = "" }) {
     return mode === "bankruptcy" ? "/api/bankruptcy" : "/api/notice";
   }, [mode]);
 
-  async function load(p) {
+  // searchText overrides the text state (needed right after clearing it, before state updates)
+  async function load(p, searchText = text) {
     const myRequest = ++requestId.current;
     setLoading(true);
     setErr(null);
@@ -369,7 +370,7 @@ function PaginatedList({ mode, initialText = "" }) {
       url.searchParams.set("page", String(p));
       url.searchParams.set("size", String(size));
       url.searchParams.set("sort", "datePublished,desc");
-      if (text.trim().length) url.searchParams.set("text", text.trim());
+      if (searchText.trim().length) url.searchParams.set("text", searchText.trim());
       if (published.enabled) {
         if (published.from) url.searchParams.set("dateFrom", published.from);
         if (published.to) url.searchParams.set("dateTo", published.to);
@@ -449,6 +450,16 @@ function PaginatedList({ mode, initialText = "" }) {
         />
         <button onClick={() => load(0)} disabled={loading}>
           Pretraži / Osvježi
+        </button>
+        <button
+          onClick={() => {
+            setText("");
+            load(0, "");
+          }}
+          disabled={!text}
+          title="Obriši pojam pretrage"
+        >
+          Očisti
         </button>
       </div>
 
