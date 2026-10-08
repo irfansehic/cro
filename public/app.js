@@ -87,27 +87,21 @@ function ListItem({ item, mode }) {
 
             <div style={{ marginTop: 6 }}>
               {publicUrl ? (
-                <>
-                  Oglas:{" "}
-                  <a href={publicUrl} target="_blank" rel="noreferrer">
-                    Otvori
-                  </a>
-                </>
+                <a href={publicUrl} target="_blank" rel="noreferrer">
+                  Otvori oglas
+                </a>
               ) : (
-                <>Oglas: —</>
+                <>Otvori oglas</>
               )}
 
               {" · "}
 
               {docsBundleUrl ? (
-                <>
-                  Svi dokumenti:{" "}
-                  <a href={docsBundleUrl} target="_blank" rel="noreferrer">
-                    Preuzmi
-                  </a>
-                </>
+                <a href={docsBundleUrl} target="_blank" rel="noreferrer">
+                  Preuzmi sve dokumente
+                </a>
               ) : (
-                <>Svi dokumenti: —</>
+                <>Preuzmi sve dokumente</>
               )}
             </div>
 
@@ -123,16 +117,15 @@ function ListItem({ item, mode }) {
                     const decision = d.vrstaOdlukeNaziv || d.vrstaOdlukeId;
                     return (
                       <div key={d.uuid ?? `doc-${idx}`}>
-                        {safeStr(d.fileName)}
+                        {d.downloadUrl ? (
+                          <a href={d.downloadUrl} target="_blank" rel="noreferrer">
+                            {safeStr(d.fileName)}
+                          </a>
+                        ) : (
+                          safeStr(d.fileName)
+                        )}
                         {decision ? (
                           <div className="small">Vrsta odluke: {safeStr(decision)}</div>
-                        ) : null}
-                        {d.downloadUrl ? (
-                          <div className="small">
-                            <a href={d.downloadUrl} target="_blank" rel="noreferrer">
-                              Direktno preuzimanje
-                            </a>
-                          </div>
                         ) : null}
                       </div>
                     );
