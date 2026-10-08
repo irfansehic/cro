@@ -1,0 +1,13 @@
+HTTP/1.1 404 Not Found
+date: Thu, 08 Oct 2026 20:07:38 GMT
+content-type: application/json;charset=UTF-8
+x-content-type-options: nosniff
+x-xss-protection: 1; mode=block
+cache-control: no-cache, no-store, max-age=0, must-revalidate
+pragma: no-cache
+expires: 0
+x-frame-options: DENY
+vary: accept-encoding
+Strict-Transport-Security: max-age=16070400; includeSubDomains
+Transfer-Encoding: chunked
+

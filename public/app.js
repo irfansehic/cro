@@ -1,4 +1,4 @@
-const { useEffect, useMemo, useState } = React;
+const { useEffect, useMemo, useRef, useState } = React;
 
 function fmtDate(s) {
   if (!s) return "—";
@@ -193,11 +193,52 @@ function ListItem({ item, mode }) {
 
 
 
+function DateRangeFilter({ label, range, onChange }) {
+  const { enabled, from, to } = range;
+  return (
+    <div className="toolbar dateFilter">
+      <label className="check">
+        <input
+          type="checkbox"
+          checked={enabled}
+          onChange={(e) => onChange({ ...range, enabled: e.target.checked })}
+        />
+        {label}
+      </label>
+      <label className={enabled ? "" : "disabled"}>
+        Od{" "}
+        <input
+          type="date"
+          value={from}
+          max={to || undefined}
+          disabled={!enabled}
+          onChange={(e) => onChange({ ...range, from: e.target.value })}
+        />
+      </label>
+      <label className={enabled ? "" : "disabled"}>
+        Do{" "}
+        <input
+          type="date"
+          value={to}
+          min={from || undefined}
+          disabled={!enabled}
+          onChange={(e) => onChange({ ...range, to: e.target.value })}
+        />
+      </label>
+    </div>
+  );
+}
+
+const EMPTY_RANGE = { enabled: false, from: "", to: "" };
+
 function PaginatedList({ mode, initialText = "" }) {
   // mode: "notice" | "bankruptcy"
   const [page, setPage] = useState(0);
   const [size] = useState(20);
   const [text, setText] = useState(initialText);
+  const [published, setPublished] = useState(EMPTY_RANGE);
+  const [expires, setExpires] = useState(EMPTY_RANGE);
+  const requestId = useRef(0);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState(null);
 
@@ -208,6 +249,7 @@ function PaginatedList({ mode, initialText = "" }) {
   }, [mode]);
 
   async function load(p) {
+    const myRequest = ++requestId.current;
     setLoading(true);
     setErr(null);
 
@@ -217,6 +259,14 @@ function PaginatedList({ mode, initialText = "" }) {
       url.searchParams.set("size", String(size));
       url.searchParams.set("sort", "datePublished,desc");
       if (text.trim().length) url.searchParams.set("text", text.trim());
+      if (published.enabled) {
+        if (published.from) url.searchParams.set("dateFrom", published.from);
+        if (published.to) url.searchParams.set("dateTo", published.to);
+      }
+      if (expires.enabled) {
+        if (expires.from) url.searchParams.set("expFrom", expires.from);
+        if (expires.to) url.searchParams.set("expTo", expires.to);
+      }
 
       const r = await fetch(url.toString(), { headers: { "Accept": "application/json" } });
 
@@ -234,13 +284,15 @@ function PaginatedList({ mode, initialText = "" }) {
       }
 
       const json = await r.json();
+      if (myRequest !== requestId.current) return; // a newer request superseded this one
       setData(json);
       setPage(p);
     } catch (e) {
+      if (myRequest !== requestId.current) return;
       setErr(e.message || String(e));
       setData(null);
     } finally {
-      setLoading(false);
+      if (myRequest === requestId.current) setLoading(false);
     }
   }
 
@@ -249,6 +301,24 @@ function PaginatedList({ mode, initialText = "" }) {
     load(0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [endpoint]);
+
+  // Reload from page 1 when a date filter is toggled or its dates change
+  const dateFilterMounted = useRef(false);
+  useEffect(() => {
+    if (!dateFilterMounted.current) {
+      dateFilterMounted.current = true;
+      return;
+    }
+    load(0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    published.enabled,
+    published.enabled ? published.from : null,
+    published.enabled ? published.to : null,
+    expires.enabled,
+    expires.enabled ? expires.from : null,
+    expires.enabled ? expires.to : null
+  ]);
 
   const content = Array.isArray(data?.content) ? data.content : [];
   const totalPages = Number.isFinite(data?.totalPages) ? data.totalPages : null;
@@ -268,6 +338,17 @@ function PaginatedList({ mode, initialText = "" }) {
           Pretraži / Osvježi
         </button>
       </div>
+
+      <DateRangeFilter label="Filtriraj po datumu objave" range={published} onChange={setPublished} />
+      {/* bankruptcy notices carry no expiration date, so this filter only applies to notices */}
+      {mode === "notice" && (
+        <DateRangeFilter label="Filtriraj po datumu isteka" range={expires} onChange={setExpires} />
+      )}
+      {expires.enabled && (expires.from || expires.to) && (
+        <div className="small" style={{ marginTop: -8, marginBottom: 12 }}>
+          Uz filter isteka rezultati su poredani po datumu isteka (najraniji prvi).
+        </div>
+      )}
 
       {err && <div className="error">{err}</div>}
 
@@ -364,7 +445,7 @@ function App() {
   
   return (
     <div className="container">
-      <h1>e pravosudje API tester</h1>
+      <h1>e pravosudje pretraga</h1>
       <div className="sub">
         Dva poziva prema e-Oglasnoj ploči (preko Node proxy-ja) i prikaz rezultata s paginacijom (20 po stranici).
       </div>
