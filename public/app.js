@@ -300,6 +300,17 @@ function DateRangeFilter({ label, range, onChange }) {
   );
 }
 
+function LoadingOverlay() {
+  return (
+    <div className="loadingOverlay" role="status" aria-live="polite">
+      <div className="loadingBox">
+        <div className="spinner" />
+        <div>Učitavanje…</div>
+      </div>
+    </div>
+  );
+}
+
 const EMPTY_RANGE = { enabled: false, from: "", to: "" };
 
 // Notice sources the API can filter on exactly. Court and notary notices are both
@@ -491,7 +502,7 @@ function PaginatedList({ mode, initialText = "" }) {
         <button onClick={() => load(page + 1)} disabled={loading || isLast}>
           Sljedeća →
         </button>
-        {loading && <div className="small">Učitavanje…</div>}
+        {loading && <LoadingOverlay />}
       </div>
 
       {content.length === 0 && !loading && !err && (
