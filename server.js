@@ -16,6 +16,7 @@ function toInt(v, fallback) {
 }
 
 const isDate = (v) => /^\d{4}-\d{2}-\d{2}$/.test(String(v || ""));
+const NOTICE_SOURCES = ["COURT", "NOTARY_PUBLIC", "INSTITUTION"];
 
 // Thrown when upstream answers with a non-2xx status, so it can be forwarded as-is
 class UpstreamError extends Error {
@@ -62,6 +63,10 @@ function buildUpstreamUrl(req, upstreamPath) {
   if (text.length > 0) url.searchParams.set("text", text);
   if (isDate(req.query.dateFrom)) url.searchParams.set("datePublishedFrom", req.query.dateFrom);
   if (isDate(req.query.dateTo)) url.searchParams.set("datePublishedTo", req.query.dateTo);
+
+  // Optional notice source(s): COURT / NOTARY_PUBLIC (noticeType COURT_NOTICE), INSTITUTION (INSTITUTION_NOTICE)
+  const sources = [].concat(req.query.source || []).filter((s) => NOTICE_SOURCES.includes(s));
+  for (const s of new Set(sources)) url.searchParams.append("noticeSourceType", s);
   return url;
 }
 

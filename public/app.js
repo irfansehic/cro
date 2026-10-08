@@ -302,6 +302,45 @@ function DateRangeFilter({ label, range, onChange }) {
 
 const EMPTY_RANGE = { enabled: false, from: "", to: "" };
 
+// Notice sources the API can filter on exactly. Court and notary notices are both
+// noticeType COURT_NOTICE; institution notices are INSTITUTION_NOTICE.
+const NOTICE_SOURCES = [
+  { value: "COURT", label: "Sud", type: "COURT_NOTICE" },
+  { value: "NOTARY_PUBLIC", label: "Javni bilježnik", type: "COURT_NOTICE" },
+  { value: "INSTITUTION", label: "Institucija", type: "INSTITUTION_NOTICE" }
+];
+
+// Empty selection means "all"
+function SourceFilter({ selected, onChange }) {
+  const all = selected.length === 0 || selected.length === NOTICE_SOURCES.length;
+
+  function toggle(value) {
+    const base = all ? [] : selected;
+    const next = base.includes(value) ? base.filter((v) => v !== value) : [...base, value];
+    onChange(next.length === NOTICE_SOURCES.length ? [] : next);
+  }
+
+  return (
+    <div className="toolbar dateFilter">
+      <span style={{ color: "var(--text)" }}>Vrsta oglasa:</span>
+      <label className="check">
+        <input type="checkbox" checked={all} onChange={() => onChange([])} />
+        Sve
+      </label>
+      {NOTICE_SOURCES.map((s) => (
+        <label key={s.value} className="check" title={s.type}>
+          <input
+            type="checkbox"
+            checked={!all && selected.includes(s.value)}
+            onChange={() => toggle(s.value)}
+          />
+          {s.label} <span className="small">({s.type})</span>
+        </label>
+      ))}
+    </div>
+  );
+}
+
 function PaginatedList({ mode, initialText = "" }) {
   // mode: "notice" | "bankruptcy"
   const [page, setPage] = useState(0);
@@ -309,6 +348,7 @@ function PaginatedList({ mode, initialText = "" }) {
   const [text, setText] = useState(initialText);
   const [published, setPublished] = useState(EMPTY_RANGE);
   const [expires, setExpires] = useState(EMPTY_RANGE);
+  const [sources, setSources] = useState([]); // [] = all
   const requestId = useRef(0);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState(null);
@@ -338,6 +378,7 @@ function PaginatedList({ mode, initialText = "" }) {
         if (expires.from) url.searchParams.set("expFrom", expires.from);
         if (expires.to) url.searchParams.set("expTo", expires.to);
       }
+      for (const src of sources) url.searchParams.append("source", src);
 
       const r = await fetch(url.toString(), { headers: { "Accept": "application/json" } });
 
@@ -373,7 +414,7 @@ function PaginatedList({ mode, initialText = "" }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [endpoint]);
 
-  // Reload from page 1 when a date filter is toggled or its dates change
+  // Reload from page 1 when a filter is toggled or its values change
   const dateFilterMounted = useRef(false);
   useEffect(() => {
     if (!dateFilterMounted.current) {
@@ -388,7 +429,8 @@ function PaginatedList({ mode, initialText = "" }) {
     published.enabled ? published.to : null,
     expires.enabled,
     expires.enabled ? expires.from : null,
-    expires.enabled ? expires.to : null
+    expires.enabled ? expires.to : null,
+    sources.join(",")
   ]);
 
   const content = Array.isArray(data?.content) ? data.content : [];
@@ -410,6 +452,7 @@ function PaginatedList({ mode, initialText = "" }) {
         </button>
       </div>
 
+      <SourceFilter selected={sources} onChange={setSources} />
       <DateRangeFilter label="Filtriraj po datumu objave" range={published} onChange={setPublished} />
       {/* bankruptcy notices carry no expiration date, so this filter only applies to notices */}
       {mode === "notice" && (
