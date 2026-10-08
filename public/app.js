@@ -14,7 +14,14 @@ function safeStr(v) {
   return s.length ? s : "—";
 }
 
-function ListItem({ item }) {
+function searchUrl(mode, text) {
+  const url = new URL(window.location.origin + window.location.pathname);
+  url.searchParams.set("mode", mode);
+  url.searchParams.set("text", String(text).trim());
+  return url.toString();
+}
+
+function ListItem({ item, mode }) {
   const title = safeStr(item.title);
   const publicUrl = item.publicUrl;
 
@@ -129,10 +136,46 @@ function ListItem({ item }) {
                 const displayName = p.fullName || p.name || p.titles;
                 return (
                   <div key={`p-${idx}`} style={{ marginBottom: 8 }}>
-                    {safeStr(p.participantType)}: {safeStr(displayName)}{" "}
+                    {safeStr(p.participantType)}:{" "}
+                    {displayName ? (
+                      <a
+                        href={searchUrl(mode, displayName)}
+                        target="_blank"
+                        rel="noreferrer"
+                        title="Pretraži ovog sudionika u novoj kartici"
+                      >
+                        {safeStr(displayName)}
+                      </a>
+                    ) : (
+                      "—"
+                    )}{" "}
                     {p.debtor === true ? "(dužnik)" : ""}
-                    {p.oib ? <div className="small">OIB: {p.oib}</div> : null}
-                    {p.address ? <div className="small">Adresa: {p.address}</div> : null}
+                    {p.oib ? (
+                      <div className="small">
+                        OIB:{" "}
+                        <a
+                          href={searchUrl(mode, p.oib)}
+                          target="_blank"
+                          rel="noreferrer"
+                          title="Pretraži po OIB-u u novoj kartici"
+                        >
+                          {p.oib}
+                        </a>
+                      </div>
+                    ) : null}
+                    {p.address ? (
+                      <div className="small">
+                        Adresa:{" "}
+                        <a
+                          href={searchUrl(mode, p.address)}
+                          target="_blank"
+                          rel="noreferrer"
+                          title="Pretraži po adresi u novoj kartici"
+                        >
+                          {p.address}
+                        </a>
+                      </div>
+                    ) : null}
                   </div>
                 );
               })}
@@ -150,11 +193,11 @@ function ListItem({ item }) {
 
 
 
-function PaginatedList({ mode }) {
+function PaginatedList({ mode, initialText = "" }) {
   // mode: "notice" | "bankruptcy"
   const [page, setPage] = useState(0);
   const [size] = useState(20);
-  const [text, setText] = useState("");
+  const [text, setText] = useState(initialText);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState(null);
 
@@ -250,7 +293,7 @@ function PaginatedList({ mode }) {
       )}
 
       {content.map((item, idx) => (
-      <ListItem key={item.uuid ?? `${mode}-${idx}`} item={item} />
+      <ListItem key={item.uuid ?? `${mode}-${idx}`} item={item} mode={mode} />
       ))}
 
     </div>
@@ -278,7 +321,17 @@ function RawPanel({ title, obj }) {
 
 
 function App() {
-  const [active, setActive] = useState(null); // null | "notice" | "bankruptcy"
+  // Allow opening a search directly via ?mode=notice|bankruptcy&text=...
+  const initialParams = useMemo(() => {
+    const sp = new URLSearchParams(window.location.search);
+    const m = sp.get("mode");
+    return {
+      mode: m === "notice" || m === "bankruptcy" ? m : null,
+      text: sp.get("text") || "",
+    };
+  }, []);
+
+  const [active, setActive] = useState(initialParams.mode); // null | "notice" | "bankruptcy"
 
   const [rawNotice, setRawNotice] = useState(null);
   const [rawBankruptcy, setRawBankruptcy] = useState(null);
@@ -301,7 +354,12 @@ function App() {
       setRawLoading(false);
     }
   }
-  
+
+  useEffect(() => {
+    if (initialParams.mode) loadRaw(initialParams.mode);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
 
   
   return (
@@ -329,14 +387,20 @@ function App() {
       {active === "notice" && (
         <>
           <div className="sectionTitle">Ucitaj oglasne ploce sudova</div>
-          <PaginatedList mode="notice" />
+          <PaginatedList
+            mode="notice"
+            initialText={initialParams.mode === "notice" ? initialParams.text : ""}
+          />
         </>
       )}
 
       {active === "bankruptcy" && (
         <>
           <div className="sectionTitle">Ucitaj bankrote</div>
-          <PaginatedList mode="bankruptcy" />
+          <PaginatedList
+            mode="bankruptcy"
+            initialText={initialParams.mode === "bankruptcy" ? initialParams.text : ""}
+          />
         </>
       )}
 
