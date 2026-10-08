@@ -67,16 +67,36 @@ input[type="text"] {
   min-width: 260px;
 }
 
-input[type="date"] {
-  border: 1px solid var(--border);
-  background: rgba(17, 24, 39, 0.7);
-  color: var(--text);
-  padding: 8px 10px;
-  border-radius: 10px;
-  color-scheme: dark;
+.dateInput {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 
-input[type="date"]:disabled { opacity: 0.5; cursor: not-allowed; }
+.dateInput input[type="text"] {
+  min-width: 0;
+  width: 130px;
+  padding: 8px 10px;
+}
+
+.dateInput input[type="text"]:disabled { opacity: 0.5; cursor: not-allowed; }
+.dateInput input.invalid { border-color: rgba(239, 68, 68, 0.7); }
+.dateInput .calBtn { padding: 6px 8px; line-height: 1; }
+
+/* native picker kept rendered (showPicker needs that) but invisible, anchored under the field */
+.dateInput .hiddenPicker {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+  border: 0;
+  padding: 0;
+  color-scheme: dark;
+}
 
 .dateFilter { margin-top: -8px; color: var(--muted); }
 .dateFilter label { display: inline-flex; align-items: center; gap: 6px; }

@@ -1,11 +1,28 @@
 const { useEffect, useMemo, useRef, useState } = React;
 
+const pad2 = (n) => String(n).padStart(2, "0");
+
+// Shows dates as DD.MM.YYYY (and date-times as DD.MM.YYYY HH:MM:SS)
 function fmtDate(s) {
   if (!s) return "—";
-  // Handles both date (YYYY-MM-DD) and date-time
+  const plain = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(s));
+  if (plain) return `${plain[3]}.${plain[2]}.${plain[1]}`; // date only: no timezone shift
   const d = new Date(s);
   if (Number.isNaN(d.getTime())) return String(s);
-  return d.toLocaleString("hr-HR");
+  return (
+    `${pad2(d.getDate())}.${pad2(d.getMonth() + 1)}.${d.getFullYear()} ` +
+    `${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`
+  );
+}
+
+// "DD.MM.YYYY" (also D.M.YYYY, optional trailing dot) -> "YYYY-MM-DD", or null if invalid
+function parseDmy(text) {
+  const m = /^(\d{1,2})\.(\d{1,2})\.(\d{4})\.?$/.exec(String(text).trim());
+  if (!m) return null;
+  const [day, month, year] = [Number(m[1]), Number(m[2]), Number(m[3])];
+  const d = new Date(Date.UTC(year, month - 1, day));
+  if (d.getUTCFullYear() !== year || d.getUTCMonth() !== month - 1 || d.getUTCDate() !== day) return null;
+  return `${year}-${pad2(month)}-${pad2(day)}`;
 }
 
 function safeStr(v) {
@@ -65,7 +82,7 @@ function ListItem({ item, mode }) {
             {caseNumber && <div>Predmet: {safeStr(caseNumber)}</div>}
 
             <div>Objavljeno: {fmtDate(item.datePublished)}</div>
-            <div>Istječe: {safeStr(item.expirationDate)}</div>
+            <div>Istječe: {fmtDate(item.expirationDate)}</div>
             <div>UUID: {safeStr(item.uuid)}</div>
 
             <div style={{ marginTop: 6 }}>
@@ -193,6 +210,69 @@ function ListItem({ item, mode }) {
 
 
 
+// Text field in DD.MM.YYYY with a calendar button; value/onChange use YYYY-MM-DD ("" when empty)
+function DateInput({ value, onChange, disabled, min, max }) {
+  const [text, setText] = useState(fmtDateOrEmpty(value));
+  const pickerRef = useRef(null);
+
+  useEffect(() => {
+    // keep the text in sync when the value changes from outside (e.g. the calendar)
+    if (parseDmy(text) !== value) setText(fmtDateOrEmpty(value));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value]);
+
+  const invalid = text.trim() !== "" && parseDmy(text) === null;
+
+  function handleText(t) {
+    setText(t);
+    if (t.trim() === "") onChange("");
+    else {
+      const iso = parseDmy(t);
+      if (iso) onChange(iso);
+    }
+  }
+
+  function openPicker() {
+    const el = pickerRef.current;
+    if (!el) return;
+    if (typeof el.showPicker === "function") el.showPicker();
+    else el.click();
+  }
+
+  return (
+    <span className="dateInput">
+      <input
+        type="text"
+        inputMode="numeric"
+        placeholder="DD.MM.YYYY"
+        value={text}
+        disabled={disabled}
+        className={invalid ? "invalid" : ""}
+        title={invalid ? "Neispravan datum, koristi DD.MM.YYYY" : undefined}
+        onChange={(e) => handleText(e.target.value)}
+      />
+      <button type="button" className="calBtn" disabled={disabled} onClick={openPicker} title="Odaberi datum">
+        📅
+      </button>
+      <input
+        ref={pickerRef}
+        type="date"
+        className="hiddenPicker"
+        tabIndex={-1}
+        aria-hidden="true"
+        value={value}
+        min={min || undefined}
+        max={max || undefined}
+        onChange={(e) => onChange(e.target.value)}
+      />
+    </span>
+  );
+}
+
+function fmtDateOrEmpty(iso) {
+  return iso ? fmtDate(iso) : "";
+}
+
 function DateRangeFilter({ label, range, onChange }) {
   const { enabled, from, to } = range;
   return (
@@ -207,22 +287,20 @@ function DateRangeFilter({ label, range, onChange }) {
       </label>
       <label className={enabled ? "" : "disabled"}>
         Od{" "}
-        <input
-          type="date"
+        <DateInput
           value={from}
-          max={to || undefined}
+          max={to}
           disabled={!enabled}
-          onChange={(e) => onChange({ ...range, from: e.target.value })}
+          onChange={(v) => onChange({ ...range, from: v })}
         />
       </label>
       <label className={enabled ? "" : "disabled"}>
         Do{" "}
-        <input
-          type="date"
+        <DateInput
           value={to}
-          min={from || undefined}
+          min={from}
           disabled={!enabled}
-          onChange={(e) => onChange({ ...range, to: e.target.value })}
+          onChange={(v) => onChange({ ...range, to: v })}
         />
       </label>
     </div>
